@@ -1,0 +1,26 @@
+name: Build Vex APK
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -o vex.zip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter create --org com.vex --project-name vex_app --platforms android .
+      - run: python3 tool/ci_prepare.py
+      - run: flutter pub get
+      - run: flutter build apk --release --target-platform android-arm,android-arm64
+      - run: bash tool/sign_apk.sh
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "build-${{ github.run_number }}" build/app/outputs/flutter-apk/vex.apk --title "Vex" --latest
